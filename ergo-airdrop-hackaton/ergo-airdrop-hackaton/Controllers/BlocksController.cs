@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using RestSharp;
 using Newtonsoft.Json.Linq;
 using Newtonsoft.Json;
+using System.Linq;
 // For more information on enabling Web API for empty projects, visit https://go.microsoft.com/fwlink/?LinkID=397860
 
 namespace ergo_airdrop_hackaton.Controllers
@@ -27,7 +28,9 @@ namespace ergo_airdrop_hackaton.Controllers
         public List<int> GetWinners(int count, int blockno, int? start, int end)
         {
             start = start == null || start <= 0 ? 1 : start;
-            
+            var diff = end - (start - 1);
+            count = count > diff.Value ? diff.Value : count;
+
             var winners = new List<int>();
             var request = new RestRequest(Method.GET);
             request.AddQueryParameter("apikey", _apiKey);
@@ -37,11 +40,20 @@ namespace ergo_airdrop_hackaton.Controllers
             if (response.StatusCode != System.Net.HttpStatusCode.OK) return new List<int>();
             var blockNo = JsonConvert.DeserializeObject<Block>(response.Content);
 
-            var seed = _md5Helper.GenerateSeed(blockNo.Result.BlockMiner);
+            var seed =   _md5Helper.GenerateSeed(blockNo.Result.BlockMiner);
             
             var rand = new Random(seed);
-            for (int i=0; i < count; i++)
-                winners.Add(rand.Next(start.Value, end + 1));
+            for (int i = 0; i < count; i++)
+            {
+                while (true)
+                {
+                    var winner = rand.Next(start.Value, end + 1);
+                    if (winners.Any(x => x.Equals(winner)))
+                        continue;
+                    winners.Add(winner);   
+                    break;
+                }   
+            }
 
             return winners;
         }
