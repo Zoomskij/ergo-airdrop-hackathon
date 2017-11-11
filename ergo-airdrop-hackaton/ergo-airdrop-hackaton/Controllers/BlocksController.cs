@@ -24,8 +24,8 @@ namespace ergo_airdrop_hackaton.Controllers
         }
 
         [HttpGet]
-        [Route("count/{count}/blockno/{blockno}/start/{start}/end/{end}")]
-        public List<int> GetWinners(int count, int blockno, int? start, int end)
+        [Route("count/{count}/blockno/{blockno}/start/{start}/end/{end}/coins/{coins}")]
+        public List<int> GetWinners(int count, int blockno, int? start, int end, int coins)
         {
             start = start == null || start <= 0 ? 1 : start;
             var diff = end - (start - 1);
@@ -40,7 +40,7 @@ namespace ergo_airdrop_hackaton.Controllers
             if (response.StatusCode != System.Net.HttpStatusCode.OK) return new List<int>();
             var blockNo = JsonConvert.DeserializeObject<Block>(response.Content);
 
-            var seed =   _md5Helper.GenerateSeed(blockNo.Result.BlockMiner);
+            var seed =  _md5Helper.GenerateSeed(blockNo.Result.BlockMiner);
             
             var rand = new Random(seed);
             for (int i = 0; i < count; i++)
@@ -52,6 +52,49 @@ namespace ergo_airdrop_hackaton.Controllers
             }
 
             return winners;
+        }
+
+        public int? GetSeed(string blockno)
+        {
+            var request = new RestRequest(Method.GET);
+            request.AddQueryParameter("apikey", _apiKey);
+            request.AddQueryParameter("blockno", blockno);
+
+            var response = _client.Execute<JObject>(request);
+            if (response.StatusCode != System.Net.HttpStatusCode.OK) return null;
+            var blockNo = JsonConvert.DeserializeObject<Block>(response.Content);
+
+            var seed = _md5Helper.GenerateSeed(blockNo.Result.BlockMiner);
+            return seed;
+        }
+
+        [HttpPost]
+        [Route("winners/{winners}/coins/{coins}/blockno/{blockno}")]
+        public List<string> Winners([FromBody] Dictionary<string, int> wallets, int winners, int coins, int blockno)
+        {
+            var allCoins = wallets.Sum(x => x.Value);
+
+            var wins = new List<string>();
+
+            var seed = GetSeed(blockno.ToString()).Value;
+            var rand = new Random(seed);
+
+            for (int i=0; i<coins; i++)
+            {
+                var getRand = rand.Next(1, allCoins + 1);
+                int currentRange = 0;
+                foreach (var wallet in wallets)
+                {
+                    if (getRand <= (currentRange + wallet.Value))
+                    {
+                        wins.Add(wallet.Key);
+                        break;
+                    }
+                    currentRange += wallet.Value;
+                }
+            }
+           
+            return wins;
         }
         
     }
