@@ -45,14 +45,10 @@ namespace ergo_airdrop_hackaton.Controllers
             var rand = new Random(seed);
             for (int i = 0; i < count; i++)
             {
-                while (true)
-                {
-                    var winner = rand.Next(start.Value, end + 1);
-                    if (winners.Any(x => x.Equals(winner)))
-                        continue;
-                    winners.Add(winner);   
-                    break;
-                }   
+                var range = Enumerable.Range(start.Value, end).Where(x => !winners.Contains(x));
+               
+                int index = rand.Next(start.Value, end - winners.Count);
+                winners.Add(range.ElementAt(index-1));
             }
 
             return winners;
