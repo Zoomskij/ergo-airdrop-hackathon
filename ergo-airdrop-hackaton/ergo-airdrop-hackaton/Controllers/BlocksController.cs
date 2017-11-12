@@ -70,20 +70,37 @@ namespace ergo_airdrop_hackaton.Controllers
 
         [HttpPost]
         [Route("winners/{winners}/coins/{coins}/blockno/{blockno}")]
-        public List<string> Winners([FromBody] Dictionary<string, int> wallets, int winners, int coins, int blockno)
+        public Dictionary<string, int> Winners([FromBody] Dictionary<string, int> wallets, int winners, int coins, int blockno)
         {
-            var allCoins = wallets.Sum(x => x.Value);
+            var countWinners = new List<int>();
+            Dictionary<string, int> selectedWinners = new Dictionary<string, int>();
+            
 
             var wins = new List<string>();
 
             var seed = GetSeed(blockno.ToString()).Value;
             var rand = new Random(seed);
 
+            for (int i = 0; i < winners; i++)
+            {
+                var range = Enumerable.Range(1, wallets.Count()).Where(x => !countWinners.Contains(x));
+
+                int index = rand.Next(1, wallets.Count() - countWinners.Count);
+                countWinners.Add(range.ElementAt(index - 1));
+                selectedWinners.Add(wallets.ElementAt(countWinners.Last()-1).Key, wallets.ElementAt(countWinners.Last()-1).Value);
+            }
+
+            var allCoins = selectedWinners.Sum(x => x.Value);
+
+            foreach (var winner in selectedWinners)
+                wins.Add(winner.Key);
+            coins -= winners;
+
             for (int i=0; i<coins; i++)
             {
                 var getRand = rand.Next(1, allCoins + 1);
                 int currentRange = 0;
-                foreach (var wallet in wallets)
+                foreach (var wallet in selectedWinners)
                 {
                     if (getRand <= (currentRange + wallet.Value))
                     {
@@ -93,8 +110,15 @@ namespace ergo_airdrop_hackaton.Controllers
                     currentRange += wallet.Value;
                 }
             }
-           
-            return wins;
+            wallets = new Dictionary<string, int>();
+            var groupedWinners = wins.GroupBy(i => i);            
+            foreach (var grp in groupedWinners)
+            {
+                wallets.Add(grp.Key, Convert.ToInt32(grp.Count()));
+            }
+
+
+            return wallets;
         }
         
     }
