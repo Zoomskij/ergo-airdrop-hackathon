@@ -23,37 +23,6 @@ namespace ergo_airdrop_hackaton.Controllers
             _md5Helper = new Helpers.Md5Helper();
         }
 
-        [HttpGet]
-        [Route("count/{count}/blockno/{blockno}/start/{start}/end/{end}/coins/{coins}")]
-        public List<int> GetWinners(int count, int blockno, int? start, int end, int coins)
-        {
-            start = start == null || start <= 0 ? 1 : start;
-            var diff = end - (start - 1);
-            count = count > diff.Value ? diff.Value : count;
-
-            var winners = new List<int>();
-            var request = new RestRequest(Method.GET);
-            request.AddQueryParameter("apikey", _apiKey);
-            request.AddQueryParameter("blockno", blockno.ToString());
-
-            var response = _client.Execute<JObject>(request);
-            if (response.StatusCode != System.Net.HttpStatusCode.OK) return new List<int>();
-            var blockNo = JsonConvert.DeserializeObject<Block>(response.Content);
-
-            var seed =  _md5Helper.GenerateSeed(blockNo.Result.BlockMiner);
-            
-            var rand = new Random(seed);
-            for (int i = 0; i < count; i++)
-            {
-                var range = Enumerable.Range(start.Value, end).Where(x => !winners.Contains(x));
-               
-                int index = rand.Next(start.Value, end - winners.Count);
-                winners.Add(range.ElementAt(index-1));
-            }
-
-            return winners;
-        }
-
         public int? GetSeed(string blockno)
         {
             var request = new RestRequest(Method.GET);
@@ -116,7 +85,6 @@ namespace ergo_airdrop_hackaton.Controllers
             {
                 wallets.Add(grp.Key, Convert.ToInt32(grp.Count()));
             }
-
 
             return wallets;
         }
